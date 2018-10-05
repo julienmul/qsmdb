@@ -1,0 +1,11 @@
+{
+  "postgres":
+      {
+       "secmaster_db": "secmasterdb",
+       "secmaster_user": "postgres",
+       "secmaster_password": "postgres",
+       "secmaster_host": "192.168.178.8",
+       "secmaster_port": "5432"
+       },
+  "non_ticker_type": ["INDEX", "CMDTY", "FOREX", "CRYPTO"]
+}
