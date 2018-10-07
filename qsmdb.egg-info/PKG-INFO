@@ -1,0 +1,10 @@
+Metadata-Version: 1.0
+Name: qsmdb
+Version: 0.1
+Summary: Module to send securities data queries to project 'secmasterdb'
+Home-page: https://github.com/julienmul/qsmdb
+Author: Julien Mueller
+Author-email: julienjmueller@gmail.com
+License: MIT
+Description: UNKNOWN
+Platform: UNKNOWN
