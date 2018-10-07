@@ -8,7 +8,7 @@ import time
 
 
 def pull_daily_prices(database, user, password, host, port, query_type,
-                      data_vendor_id, beg_date, end_date, adjust=True, verbose=False,
+                      data_vendor_id, beg_date, end_date, adjust=True,
                       *args):
     """ Query the daily prices from the database for the tsid provided between
     the start and end dates. Return a DataFrame with the prices.
@@ -30,8 +30,7 @@ def pull_daily_prices(database, user, password, host, port, query_type,
     try:
         engine = create_engine('postgresql://' + user + ':' + password + '@' + host + ':' + port + '/' + database)
         tsid, = args
-        if verbose:
-            print('Extracting the daily prices for %s' % (tsid,))
+        print('Extracting the daily prices for %s' % (tsid,))
         if tsid.split('.')[-1] not in query_type:
             df = pd.read_sql(sql=daily_equity(tsid,
                                               data_vendor_id,
