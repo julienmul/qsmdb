@@ -8,7 +8,7 @@ import time
 
 
 def pull_daily_prices(database, user, password, host, port, query_type,
-                      data_vendor_id, beg_date, end_date, adjust=True,
+                      data_vendor_id, beg_date, end_date, adjust=True, verbose=False,
                       *args):
     """ Query the daily prices from the database for the tsid provided between
     the start and end dates. Return a DataFrame with the prices.
@@ -23,13 +23,15 @@ def pull_daily_prices(database, user, password, host, port, query_type,
     :param beg_date: String of the ISO date to start with
     :param end_date: String of the ISO date to end with
     :param adjust: Boolean of whether to adjust the values or not; default True
+    :param verbose: Boolean of whether print debug info or not; default false
     :return: DataFrame of the returned prices
     """
 
     try:
         engine = create_engine('postgresql://' + user + ':' + password + '@' + host + ':' + port + '/' + database)
         tsid, = args
-        print('Extracting the daily prices for %s' % (tsid,))
+        if verbose:
+            print('Extracting the daily prices for %s' % (tsid,))
         if tsid.split('.')[-1] not in query_type:
             df = pd.read_sql(sql=daily_equity(tsid,
                                               data_vendor_id,
@@ -63,16 +65,17 @@ def pull_daily_prices(database, user, password, host, port, query_type,
         raise SystemError('Error: Unknown issue occurred in pull_daily_prices')
 
 
-def query_secmasterdb(tsid_list, beg_date='1960-01-01',
+def query_secmasterdb(tsid_list, beg_date='1990-01-01',
                       end_date=dt.datetime.today(), frequency='daily',
-                      data_vendor_id=20):
+                      data_vendor_id=20, verbose=False):
     """ Wrapper for function pull_daily_prices. Gets input tsid symbols and checks config for input.
 
-    :param tsid_list:
-    :param beg_date: String of the ISO date to start with
-    :param end_date: String of the ISO date to end with
-    :param frequency: String of the predefined periodicity of data
-    :param data_vendor_id: Integer of the data vendor id
+    :param tsid_list: List or String of security symbols
+    :param beg_date: String of the ISO date to start with; default '1990-01-01'
+    :param end_date: String of the ISO date to end with; default 'today'
+    :param frequency: String of the predefined periodicity of data; default 'daily'
+    :param data_vendor_id: Integer of the data vendor id; default 20
+    :param verbose: Boolean of whether print debug info or not; default false
     :return: Status message and DataFrame of the appended tsid prices
     """
     database = cfg['postgres']['secmaster_db']
@@ -105,13 +108,13 @@ def query_secmasterdb(tsid_list, beg_date='1960-01-01',
                                       'qsmdb.py' % frequency)
 
         prices_df = pd.concat([prices_df, ticker_df], ignore_index=False, sort=True)
-
-    print('Query took %0.2f seconds' % (time.time() - start_time))
-    unique_codes = pd.unique((prices_df['tsid']).values)
-    print('There are %i unique tsid codes' % (len(unique_codes)))
-    print('There are %s rows' % ('{:,}'.format(len(prices_df.index))))
-    print('The earliest date in query is {}\nThe latest date is {}'.format(
-        min(prices_df.index), max(prices_df.index)))
-    print('Today is the {}'.format(dt.datetime.today().strftime('%Y-%m-%d')))
+    if verbose:
+        print('Query took %0.2f seconds' % (time.time() - start_time))
+        unique_codes = pd.unique((prices_df['tsid']).values)
+        print('There are %i unique tsid codes' % (len(unique_codes)))
+        print('There are %s rows' % ('{:,}'.format(len(prices_df.index))))
+        print('The earliest date in query is {}\nThe latest date is {}'.format(
+            min(prices_df.index), max(prices_df.index)))
+        print('Today is the {}'.format(dt.datetime.today().strftime('%Y-%m-%d')))
 
     return prices_df
