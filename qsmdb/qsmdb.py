@@ -23,7 +23,6 @@ def pull_daily_prices(database, user, password, host, port, query_type,
     :param beg_date: String of the ISO date to start with
     :param end_date: String of the ISO date to end with
     :param adjust: Boolean of whether to adjust the values or not; default True
-    :param verbose: Boolean of whether print debug info or not; default false
     :return: DataFrame of the returned prices
     """
 
