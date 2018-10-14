@@ -47,20 +47,20 @@ def daily_equity(tsid, data_vendor_id, beg_date, end_date):
         AND dp.date>='%s'::date AND dp.date<='%s'::date;""" % (tsid, data_vendor_id, beg_date, end_date)
 
 
-def earnings_history(tsid, beg_date, end_date, data_vendor_id=20):
+def eq_earnings_history(tsid, beg_date, end_date, data_vendor_id=20):
     return """SELECT tsid,
         date,
-        epsactual AS float,
-        epsestimate As float,
-        epsdifference AS float,
-        surprisepercent AS float
+        CAST(epsactual AS float),
+        CAST(epsestimate As float),
+        CAST(epsdifference AS float),
+        CAST(surprisepercent AS float)
         FROM equity_earnings_history
         WHERE tsid = '%s'
         AND vendor_id = '%s'
         AND date>='%s'::date AND date<='%s'::date;""" % (tsid, data_vendor_id, beg_date, end_date)
 
 
-def equity_earnings_trend(tsid, beg_date, end_date, data_vendor_id=20):
+def eq_earnings_trend(tsid, beg_date, end_date, data_vendor_id=20):
     return """SELECT tsid, 
         extraction_date, 
         date, 
@@ -81,25 +81,23 @@ def equity_earnings_trend(tsid, beg_date, end_date, data_vendor_id=20):
         CAST(earnings_trend ->> 'revenueEstimateGrowth' AS float) AS revenueEstimateGrowth,
         CAST(earnings_trend ->> 'revenueEstimateNumberOfAnalysts' AS float) AS revenueEstimateNumberOfAnalysts,
         CAST(earnings_trend ->> 'revenueEstimateYearAgoEps' AS float) AS revenueEstimateYearAgoEps,
-        CAST(earnings_trend ->> 'revenueEstimateNumberOfAnalysts' AS float) AS revenueEstimateNumberOfAnalysts,
         CAST(earnings_trend ->> 'earningsEstimateAvg' AS float) AS earningsEstimateAvg,
         CAST(earnings_trend ->> 'earningsEstimateLow' AS float) AS earningsEstimateLow,
         CAST(earnings_trend ->> 'earningsEstimateHigh' AS float) AS earningsEstimateHigh,
         CAST(earnings_trend ->> 'earningsEstimateGrowth' AS float) AS earningsEstimateGrowth,
-        CAST(earnings_trend ->> 'earningsEstimateYearAgoEps' AS float) AS earningsEstimateYearAgoEps,
-        CAST(earnings_trend ->> 'earningsEstimateNumberOfAnalysts' AS float) AS earningsEstimateNumberOfAnalysts,
+        CAST(earnings_trend ->> 'earningsEstimateYearAgoEps' AS float) AS earningsEstimateYearAgoEps
         FROM equity_earnings_trend
         WHERE tsid = '%s'
         AND vendor_id = '%s'
         AND extraction_date>='%s'::date AND extraction_date<='%s'::date;""" % (tsid, data_vendor_id, beg_date, end_date)
 
 
-def equity_cash_flow(tsid, beg_date, end_date, data_vendor_id=20):
+def eq_cash_flow(tsid, beg_date, end_date, data_vendor_id=20):
     return """SELECT tsid, 
         date, 
         frequency, 
         CAST(cash_flow ->> 'netIncome' AS float) AS netIncome,
-        CAST(cash_flow ->> 'filing_date' AS float) AS filing_date,
+        CAST(NULLIF(cash_flow ->> 'filing_date', '0000-00-00') AS date) AS filing_date,
         CAST(cash_flow ->> 'investments' AS float) AS investments,
         CAST(cash_flow ->> 'changeInCash' AS float) AS changeInCash,
         CAST(cash_flow ->> 'depreciation' AS float) AS depreciation,
@@ -120,14 +118,14 @@ def equity_cash_flow(tsid, beg_date, end_date, data_vendor_id=20):
         CAST(cash_flow ->> 'earningsEstimateHigh' AS float) AS earningsEstimateHigh,
         CAST(cash_flow ->> 'earningsEstimateGrowth' AS float) AS earningsEstimateGrowth,
         CAST(cash_flow ->> 'earningsEstimateYearAgoEps' AS float) AS earningsEstimateYearAgoEps,
-        CAST(cash_flow ->> 'earningsEstimateNumberOfAnalysts' AS float) AS earningsEstimateNumberOfAnalysts,
+        CAST(cash_flow ->> 'earningsEstimateNumberOfAnalysts' AS float) AS earningsEstimateNumberOfAnalysts
         FROM equity_cash_flow
         WHERE tsid = '%s'
         AND vendor_id = '%s'
         AND date>='%s'::date AND date<='%s'::date;""" % (tsid, data_vendor_id, beg_date, end_date)
 
 
-def equity_balance_sheet(tsid, beg_date, end_date, data_vendor_id=20):
+def eq_balance_sheet(tsid, beg_date, end_date, data_vendor_id=20):
     return """SELECT tsid, 
         date, 
         frequency, 
@@ -137,7 +135,7 @@ def equity_balance_sheet(tsid, beg_date, end_date, data_vendor_id=20):
         CAST(balance_sheet ->> 'otherLiab' AS float) AS otherLiab,
         CAST(balance_sheet ->> 'totalLiab' AS float) AS totalLiab,
         CAST(balance_sheet ->> 'commonStock' AS float) AS commonStock,
-        CAST(balance_sheet ->> 'filing_date' AS date) AS filing_date,
+        CAST(NULLIF(balance_sheet ->> 'filing_date', '0000-00-00') AS date) AS filing_date,
         CAST(balance_sheet ->> 'otherAssets' AS float) AS otherAssets,
         CAST(balance_sheet ->> 'totalAssets' AS float) AS totalAssets,
         CAST(balance_sheet ->> 'longTermDebt' AS float) AS longTermDebt,
@@ -172,7 +170,7 @@ def equity_balance_sheet(tsid, beg_date, end_date, data_vendor_id=20):
         AND date>='%s'::date AND date<='%s'::date;""" % (tsid, data_vendor_id, beg_date, end_date)
 
 
-def equity_income_statement(tsid, beg_date, end_date, data_vendor_id=20):
+def eq_income_statement(tsid, beg_date, end_date, data_vendor_id=20):
     return """SELECT tsid, 
         date, 
         frequency, 
@@ -204,7 +202,7 @@ def equity_income_statement(tsid, beg_date, end_date, data_vendor_id=20):
         AND date>='%s'::date AND date<='%s'::date;""" % (tsid, data_vendor_id, beg_date, end_date)
 
 
-def equity_key_metrics_highlights(tsid, beg_date, end_date, data_vendor_id=20):
+def eq_key_metrics_highlights(tsid, beg_date, end_date, data_vendor_id=20):
     return """SELECT tsid, 
         date, 
         CAST(highlights ->> 'EBITDA' AS float) AS EBITDA,
@@ -218,7 +216,7 @@ def equity_key_metrics_highlights(tsid, beg_date, end_date, data_vendor_id=20):
         CAST(highlights ->> 'DividendYield' AS float) AS DividendYield,
         CAST(highlights ->> 'EarningsShare' AS float) AS EarningsShare,
         CAST(highlights ->> 'GrossProfitTTM' AS float) AS GrossProfitTTM,
-        CAST(highlights ->> 'MostRecentQuarter' AS date) AS MostRecentQuarter,
+        CAST(NULLIF(highlights ->> 'MostRecentQuarter', '0000-00-00') AS date) AS MostRecentQuarter,
         CAST(highlights ->> 'ReturnOnAssetsTTM' AS float) AS ReturnOnAssetsTTM,
         CAST(highlights ->> 'ReturnOnEquityTTM' AS float) AS ReturnOnEquityTTM,
         CAST(highlights ->> 'OperatingMarginTTM' AS float) AS OperatingMarginTTM,
@@ -230,14 +228,14 @@ def equity_key_metrics_highlights(tsid, beg_date, end_date, data_vendor_id=20):
         CAST(highlights ->> 'EPSEstimateNextQuarter' AS float) AS EPSEstimateNextQuarter,
         CAST(highlights ->> 'MarketCapitalizationMln' AS float) AS MarketCapitalizationMln,
         CAST(highlights ->> 'QuarterlyRevenueGrowthYOY' AS float) AS QuarterlyRevenueGrowthYOY,
-        CAST(highlights ->> 'QuarterlyEarningsGrowthYOY' AS float) AS QuarterlyEarningsGrowthYOY,
+        CAST(highlights ->> 'QuarterlyEarningsGrowthYOY' AS float) AS QuarterlyEarningsGrowthYOY
         FROM key_metrics
         WHERE tsid = '%s'
         AND vendor_id = '%s'
         AND date>='%s'::date AND date<='%s'::date;""" % (tsid, data_vendor_id, beg_date, end_date)
 
 
-def equity_key_metrics_valuation(tsid, beg_date, end_date, data_vendor_id=20):
+def eq_key_metrics_valuation(tsid, beg_date, end_date, data_vendor_id=20):
     return """SELECT tsid, 
         date, 
         CAST(valuation ->> 'ForwardPE' AS float) AS ForwardPE,
@@ -252,14 +250,14 @@ def equity_key_metrics_valuation(tsid, beg_date, end_date, data_vendor_id=20):
         AND date>='%s'::date AND date<='%s'::date;""" % (tsid, data_vendor_id, beg_date, end_date)
 
 
-def equity_key_metrics_technicals(tsid, beg_date, end_date, data_vendor_id=20):
+def eq_key_metrics_technicals(tsid, beg_date, end_date, data_vendor_id=20):
     return """SELECT tsid, 
         date, 
         CAST(technicals ->> 'Beta' AS float) AS Beta,
-        CAST(technicals ->> '50DayMA' AS float) AS 50DayMA,
-        CAST(technicals ->> '200DayMA' AS float) AS 200DayMA,
-        CAST(technicals ->> '52WeekLow' AS float) AS 52WeekLow,
-        CAST(technicals ->> '52WeekHigh' AS float) AS 52WeekHigh,
+        CAST(technicals ->> '50DayMA' AS float) AS MA50Day,
+        CAST(technicals ->> '200DayMA' AS float) AS MA200Day,
+        CAST(technicals ->> '52WeekLow' AS float) AS Week52Low,
+        CAST(technicals ->> '52WeekHigh' AS float) AS Week52High,
         CAST(technicals ->> 'ShortRatio' AS float) AS ShortRatio,
         CAST(technicals ->> 'SharesShort' AS float) AS SharesShort,
         CAST(technicals ->> 'ShortPercent' AS float) AS ShortPercent,
@@ -270,13 +268,13 @@ def equity_key_metrics_technicals(tsid, beg_date, end_date, data_vendor_id=20):
         AND date>='%s'::date AND date<='%s'::date;""" % (tsid, data_vendor_id, beg_date, end_date)
 
 
-def equity_key_metrics_splitdiv(tsid, beg_date, end_date, data_vendor_id=20):
+def eq_key_metrics_splitdiv(tsid, beg_date, end_date, data_vendor_id=20):
     return """SELECT tsid, 
         date, 
         CAST(splitdiv ->> 'PayoutRatio' AS float) AS PayoutRatio,
-        CAST(splitdiv ->> 'DividendDate' AS date) AS DividendDate,
-        CAST(splitdiv ->> 'LastSplitDate' AS date) AS LastSplitDate,
-        CAST(splitdiv ->> 'ExDividendDate' AS date) AS ExDividendDate,
+        CAST(NULLIF(splitdiv ->> 'DividendDate', '0000-00-00') AS date) AS DividendDate,
+        CAST(NULLIF(splitdiv ->> 'LastSplitDate', '0000-00-00') AS date) AS LastSplitDate,
+        CAST(NULLIF(splitdiv ->> 'ExDividendDate', '0000-00-00') AS date) AS ExDividendDate,
         CAST(splitdiv ->> 'LastSplitFactor' AS text) AS LastSplitFactor,
         CAST(splitdiv ->> 'ForwardAnnualDividendRate' AS float) AS ForwardAnnualDividendRate,
         CAST(splitdiv ->> 'ForwardAnnualDividendYield' AS float) AS ForwardAnnualDividendYield
@@ -284,3 +282,19 @@ def equity_key_metrics_splitdiv(tsid, beg_date, end_date, data_vendor_id=20):
         WHERE tsid = '%s'
         AND vendor_id = '%s'
         AND date>='%s'::date AND date<='%s'::date;""" % (tsid, data_vendor_id, beg_date, end_date)
+
+
+available_fundamentals = {
+    "equity":
+        {
+            "balance_sheet": eq_balance_sheet,
+            "earnings_history": eq_earnings_history,
+            "earnings_trend": eq_earnings_trend,
+            "cash_flow": eq_cash_flow,
+            "income_statement": eq_income_statement,
+            "key_metrics_highlights": eq_key_metrics_highlights,
+            "key_metrics_valuation": eq_key_metrics_valuation,
+            "key_metrics_technicals": eq_key_metrics_technicals,
+            "key_metrics_splitdiv": eq_key_metrics_splitdiv
+        }
+}
