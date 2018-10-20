@@ -11,6 +11,18 @@ cfg = {
 }
 
 
+def get_asset_type(tsid, data_vendor_id):
+    return """SELECT type FROM classification
+        WHERE dp.tsid = '%s'
+        AND dp.vendor_id = '%s'""" % (tsid, data_vendor_id)
+
+
+def get_asset_sector(tsid, data_vendor_id):
+    return """SELECT sector FROM classification
+        WHERE dp.tsid = '%s'
+        AND dp.vendor_id = '%s'""" % (tsid, data_vendor_id)
+
+
 def daily_non_equity(tsid, data_vendor_id, beg_date, end_date):
     return """SELECT dp.tsid,
         CAST(dp.date AS DATE),
@@ -284,9 +296,72 @@ def eq_key_metrics_splitdiv(tsid, beg_date, end_date, data_vendor_id=20):
         AND date>='%s'::date AND date<='%s'::date;""" % (tsid, data_vendor_id, beg_date, end_date)
 
 
+# TODO: implement asset allocation ratio
+def fund_key_metrics_highlights(tsid, data_vendor_id, beg_date, end_date):
+    return """SELECT tsid, 
+        date, 
+        CAST(NULLIF(highlights ->> 'Yield', '-') AS float) AS Yield,
+        CAST(NULLIF(highlights -> 'MorningStar' -> 'Ratio', '-') AS text) AS MorningStarRatio,
+        CAST(NULLIF(highlights -> 'MorningStar' -> 'Category_Benchmark', '-') AS text) AS MorningStarCategory_Benchmark,
+        CAST(NULLIF(highlights -> 'MorningStar' -> 'Sustainability_Ratio', '-') AS text) AS MorningStarSustainability_Ratio,
+        CAST(NULLIF(highlights -> 'Performance' -> 'Returns_3Y', '-') AS float) AS Returns_3Y,
+        CAST(NULLIF(highlights -> 'Performance' -> 'Returns_5Y', '-') AS float) AS Returns_5Y,
+        CAST(NULLIF(highlights -> 'Performance' -> 'Returns_10Y', '-') AS float) AS Returns_10Y,
+        CAST(NULLIF(highlights -> 'Performance' -> 'Returns_YTD', '-') AS float) AS Returns_YTD,
+        CAST(NULLIF(highlights -> 'Performance' -> '3y_ExpReturn', '-') AS float) AS 3y_ExpReturn,
+        CAST(NULLIF(highlights -> 'Performance' -> '3y_SharpRatio', '-') AS float) AS 3y_SharpRatio,
+        CAST(NULLIF(highlights -> 'Performance' -> '3y_Volatility', '-') AS float) AS 3y_Volatility,
+        CAST(NULLIF(highlights ->> 'Inception_Date', '0000-00-00') AS date) AS MostRecentQuarter,
+        CAST(NULLIF(highlights ->> 'Ongoing_Charge', '-') AS float) AS Ongoing_Charge,
+        CAST(NULLIF(highlights ->> 'NetExpenseRatio', '-') AS float) AS NetExpenseRatio
+        FROM key_metrics
+        WHERE tsid = '%s'
+        AND vendor_id = '%s'
+        AND date>='%s'::date AND date<='%s'::date;""" % (tsid, data_vendor_id, beg_date, end_date)
+
+
+# TODO: implement query for valuation
+def fund_key_metrics_valuation(tsid, data_vendor_id, beg_date, end_date):
+    return """SELECT tsid, 
+        date, 
+        CAST(NULLIF(valuation -> Valuations_Growth -> Growth_Rates_Portfolio -> 'Sales Growth', '-') AS float) AS SalesGrowth,
+        CAST(NULLIF(valuation -> Valuations_Growth -> Growth_Rates_Portfolio -> 'Cash-Flow Growth', '-') AS float) AS CashFlowGrowth,
+        CAST(NULLIF(valuation -> Valuations_Growth -> Growth_Rates_Portfolio -> 'Book-Value Growth', '-') AS float) AS BookValueGrowth,
+        CAST(NULLIF(valuation -> Valuations_Growth -> Growth_Rates_Portfolio -> 'Historical Earnings Growth', '-') AS float) AS HistoricalEarningsGrowth,
+        CAST(NULLIF(valuation -> Valuations_Growth -> Growth_Rates_Portfolio -> 'Long-Term Projected Earnings Growth', '-') AS float) AS Long-TermProjectedEarningsGrowth,
+        CAST(NULLIF(valuation -> Valuations_Growth -> Valuations_Rates_Portfolio -> 'Price/Book', '-') AS float) AS Price/Book,
+        CAST(NULLIF(valuation -> Valuations_Growth -> Valuations_Rates_Portfolio -> 'Price/Sales', '-') AS float) AS Price/Sales,
+        CAST(NULLIF(valuation -> Valuations_Growth -> Valuations_Rates_Portfolio -> 'Price/Cash Flow', '-') AS float) AS Price/CashFlow,
+        CAST(NULLIF(valuation -> Valuations_Growth -> Valuations_Rates_Portfolio -> 'Dividend-Yield Factor', '-') AS float) AS Dividend-YieldFactor,
+        CAST(NULLIF(valuation -> Valuations_Growth -> Valuations_Rates_Portfolio -> 'Price/Prospective Earnings', '-') AS float) AS Price/ProspectiveEarnings
+        FROM key_metrics
+        WHERE tsid = '%s'
+        AND vendor_id = '%s'
+        AND date>='%s'::date AND date<='%s'::date;""" % (tsid, data_vendor_id, beg_date, end_date)
+
+
+def fund_key_metrics_technicals(tsid, data_vendor_id, beg_date, end_date):
+    return """SELECT tsid, 
+        date, 
+        CAST(NULLIF(technicals ->> 'Beta', '-') AS float) AS Beta,
+        CAST(NULLIF(technicals ->> '50DayMA', '-') AS float) AS MA50Day,
+        CAST(NULLIF(technicals ->> '200DayMA', '-') AS float) AS MA200Day,
+        CAST(NULLIF(technicals ->> '52WeekLow', '-') AS float) AS Week52Low,
+        CAST(NULLIF(technicals ->> '52WeekHigh', '-') AS float) AS Week52High
+        FROM key_metrics
+        WHERE tsid = '%s'
+        AND vendor_id = '%s'
+        AND date>='%s'::date AND date<='%s'::date;""" % (tsid, data_vendor_id, beg_date, end_date)
+
+
+# TODO: implement fund holdings stats fro equity and bond etp
+def fund_key_metrics_holdings(tsid, data_vendor_id, beg_date, end_date):
+    pass
+
+
 available_fundamentals = {
-    "equity":
-        {
+    "equity": {
+        "stock": {
             "balance_sheet": eq_balance_sheet,
             "earnings_history": eq_earnings_history,
             "earnings_trend": eq_earnings_trend,
@@ -296,5 +371,13 @@ available_fundamentals = {
             "key_metrics_valuation": eq_key_metrics_valuation,
             "key_metrics_technicals": eq_key_metrics_technicals,
             "key_metrics_splitdiv": eq_key_metrics_splitdiv
+        },
+        "etp": {
+            "key_metrics_highlights": fund_key_metrics_highlights,
+            "key_metrics_valuation": fund_key_metrics_valuation,
+            "key_metrics_technicals": fund_key_metrics_technicals,
+            "key_metrics_holdings": fund_key_metrics_holdings
         }
+    },
+    "debt": {}
 }

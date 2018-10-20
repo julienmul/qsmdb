@@ -123,7 +123,7 @@ def query_security_prices(tsid_list, beg_date='1990-01-01',
 
 
 def pull_fundamentals(database, user, password, host, port, query_type,
-                      data_vendor_id, beg_date, end_date, cat,
+                      data_vendor_id, beg_date, end_date, cat, verbose,
                       *args):
     """ Query the daily prices from the database for the tsid provided between
     the start and end dates. Return a DataFrame with the prices.
@@ -143,7 +143,8 @@ def pull_fundamentals(database, user, password, host, port, query_type,
     try:
         engine = create_engine('postgresql://' + user + ':' + password + '@' + host + ':' + port + '/' + database)
         tsid, = args
-        print('Extracting the "%s" for "%s"' % (cat, tsid))
+        if verbose:
+            print('Extracting the "%s" for "%s"' % (cat, tsid))
         if tsid.split('.')[-1] not in query_type:
             df = pd.read_sql(sql=available_fundamentals['equity'][cat](tsid, beg_date, end_date, data_vendor_id),
                              con=engine)
@@ -177,7 +178,7 @@ def pull_fundamentals(database, user, password, host, port, query_type,
 
 def query_security_fundamentals(tsid_list, cat_list, beg_date='1990-01-01',
                                 end_date=dt.datetime.today(),
-                                data_vendor_id=20):
+                                data_vendor_id=20, verbose=False):
     """ Wrapper for function pull_daily_prices. Gets input tsid symbols and checks config for input.
 
     :param tsid_list: List or String of security symbols
@@ -185,6 +186,7 @@ def query_security_fundamentals(tsid_list, cat_list, beg_date='1990-01-01',
     :param beg_date: String of the ISO date to start with; default '1990-01-01'
     :param end_date: String of the ISO date to end with; default 'today'
     :param data_vendor_id: Integer of the data vendor id; default 20
+    :param verbose: Boolean of whether print debug info or not; default false
     :return: Status message and DataFrame of the appended tsid prices
     """
     database = cfg['postgres']['secmaster_db']
@@ -207,14 +209,15 @@ def query_security_fundamentals(tsid_list, cat_list, beg_date='1990-01-01',
             for ticker in tsid_list:
                 new_df = pull_fundamentals(database, user, password, host, port,
                                            query_type, data_vendor_id, beg_date,
-                                           end_date, cat, ticker)
+                                           end_date, cat, verbose, ticker)
 
                 fundamentals_data = pd.concat([fundamentals_data, new_df], ignore_index=False, sort=True)
             funda_dict[cat] = fundamentals_data
         else:
             print("Skipping: ", cat, " -> category does not exist or not implemented!") % cat
             continue
-        unique_codes = pd.unique((fundamentals_data['tsid']).values)
-        print('"%s" has # %i unique tsid codes' % (cat, len(unique_codes)))
+        if verbose:
+            unique_codes = pd.unique((fundamentals_data['tsid']).values)
+            print('"%s" has # %i unique tsid codes' % (cat, len(unique_codes)))
     print('Query took %0.2f seconds' % (time.time() - start_time))
     return funda_dict
