@@ -9,8 +9,7 @@ def calculate_adjusted_prices(df):
 
     NOTE: This assumes the input split values direct. E.g. 7-for-1 split = 7
 
-    :param df: DataFrame with raw prices along with dividend and split_ratio
-        values
+    :param df: DataFrame with raw prices along with dividend and split_ratio values
     :return: DataFrame with the addition of the adjusted price column
     """
 

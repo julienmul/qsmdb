@@ -1,75 +1,27 @@
-from .config import daily_equity, daily_non_equity, cfg, available_fundamentals
-from .mods import calculate_adjusted_prices
+from .config import cfg, available_fundamentals
+from .db_io import execute_query, pull_daily_prices, pull_fundamentals
+from .queries import daily_equity, daily_non_equity, \
+    get_asset_sector, get_asset_type, check_asset_query
 
 import datetime as dt
-from sqlalchemy import create_engine
 import pandas as pd
 import time
 
+database = cfg['postgres']['secmaster_db']
+user = cfg['postgres']['secmaster_user']
+password = cfg['postgres']['secmaster_password']
+host = cfg['postgres']['secmaster_host']
+port = cfg['postgres']['secmaster_port']
+excl_sec_type = cfg['non_ticker_type']
 
-def get_available_fundamentals(sec_type='equity'):
-    return [cat for cat in available_fundamentals[sec_type]]
 
-
-def pull_daily_prices(database, user, password, host, port, query_type,
-                      data_vendor_id, beg_date, end_date, adjust=True,
-                      *args):
-    """ Query the daily prices from the database for the tsid provided between
-    the start and end dates. Return a DataFrame with the prices.
-
-    :param database: String of the database name
-    :param user: String of the username used to login to the database
-    :param password: String of the password used to login to the database
-    :param host: String of the database address (localhost, url, ip, etc.)
-    :param port: Integer of the database port number (5432)
-    :param query_type: List of security properties to distinct equities
-    :param data_vendor_id: Integer of which data vendor id to return prices for
-    :param beg_date: String of the ISO date to start with
-    :param end_date: String of the ISO date to end with
-    :param adjust: Boolean of whether to adjust the values or not; default True
-    :return: DataFrame of the returned prices
-    """
-
-    try:
-        engine = create_engine('postgresql://' + user + ':' + password + '@' + host + ':' + port + '/' + database)
-        tsid, = args
-        print('Extracting the daily prices for %s' % (tsid,))
-        if tsid.split('.')[-1] not in query_type:
-            df = pd.read_sql(sql=daily_equity(tsid,
-                                              data_vendor_id,
-                                              beg_date,
-                                              end_date),
-                             con=engine)
-        else:
-            df = pd.read_sql(sql=daily_non_equity(tsid,
-                                                  data_vendor_id,
-                                                  beg_date,
-                                                  end_date),
-                             con=engine)
-        if len(df) == 0:
-            raise SystemExit('No data returned from table query. Try adjusting the criteria for the query.')
-
-        df['date'] = pd.to_datetime(df['date'], utc=True)
-        df['date'] = df['date'].apply(lambda x: x.date())
-        # The next two lines change the index of the df to be the date.
-        df.set_index(['date'], inplace=True)
-        df.index.name = 'date'
-
-        df.sort_values(by='date', inplace=True)
-
-        if adjust and tsid.split('.')[-1] not in query_type:
-            # Calculate the adjusted prices for the close column
-            df = calculate_adjusted_prices(df=df)
-        return df
-
-    except Exception as e:
-        print(e)
-        raise SystemError('Error: Unknown issue occurred in pull_daily_prices')
+def get_available_fundamentals(sec_class='equity', sec_type='stock'):
+    return [cat for cat in available_fundamentals[sec_class][sec_type]]
 
 
 def query_security_prices(tsid_list, beg_date='1990-01-01',
                           end_date=dt.datetime.today(), frequency='daily',
-                          data_vendor_id=20, verbose=False):
+                          data_vendor_id=20, adjust=True, verbose=False):
     """ Wrapper for function pull_daily_prices. Gets input tsid symbols and checks config for input.
 
     :param tsid_list: List or String of security symbols
@@ -80,36 +32,31 @@ def query_security_prices(tsid_list, beg_date='1990-01-01',
     :param verbose: Boolean of whether print debug info or not; default false
     :return: Status message and DataFrame of the appended tsid prices
     """
-    database = cfg['postgres']['secmaster_db']
-    user = cfg['postgres']['secmaster_user']
-    password = cfg['postgres']['secmaster_password']
-    host = cfg['postgres']['secmaster_host']
-    port = cfg['postgres']['secmaster_port']
-    query_type = cfg['non_ticker_type']
-
     if type(tsid_list) is not list:
         tsid_list = [tsid_list]
     start_time = time.time()
     prices_df = pd.DataFrame()
 
     for ticker in tsid_list:
-        if frequency == 'daily':
-            ticker_df = pull_daily_prices(database,
-                                          user,
-                                          password,
-                                          host,
-                                          port,
-                                          query_type,
-                                          data_vendor_id,
-                                          beg_date,
-                                          end_date,
-                                          'tsid', ticker)
+        # 1. check if ticker exists
+        check = check_asset_query(ticker, data_vendor_id)
+        ticker_type = execute_query(check, user, password, host, port, database)
+        if ticker_type['exists'][0]:
+            # 3. check if frequency is implemented
+            if frequency == 'daily':
+                # 3. run price query for each ticker
+                ticker_df = pull_daily_prices(ticker, data_vendor_id, beg_date, end_date, adjust,
+                                              database, user, password, host, port,
+                                              excl_sec_type)
+            else:
+                raise NotImplementedError('Frequency %s is not implemented within '
+                                          'qsmdb.py' % frequency)
 
+            prices_df = pd.concat([prices_df, ticker_df], ignore_index=False, sort=True)
         else:
-            raise NotImplementedError('Frequency %s is not implemented within '
-                                      'qsmdb.py' % frequency)
+            print("Skipping: ", ticker, " -> ticker does not exist for vendor id or in excluded 'sec_type' list!")
+            continue
 
-        prices_df = pd.concat([prices_df, ticker_df], ignore_index=False, sort=True)
     if verbose:
         print('Query took %0.2f seconds' % (time.time() - start_time))
         unique_codes = pd.unique((prices_df['tsid']).values)
@@ -120,60 +67,6 @@ def query_security_prices(tsid_list, beg_date='1990-01-01',
         print('Today is the {}'.format(dt.datetime.today().strftime('%Y-%m-%d')))
 
     return prices_df
-
-
-def pull_fundamentals(database, user, password, host, port, query_type,
-                      data_vendor_id, beg_date, end_date, cat, verbose,
-                      *args):
-    """ Query the daily prices from the database for the tsid provided between
-    the start and end dates. Return a DataFrame with the prices.
-
-    :param database: String of the database name
-    :param user: String of the username used to login to the database
-    :param password: String of the password used to login to the database
-    :param host: String of the database address (localhost, url, ip, etc.)
-    :param port: Integer of the database port number (5432)
-    :param query_type: List of security properties to distinct equities
-    :param data_vendor_id: Integer of which data vendor id to return prices for
-    :param beg_date: String of the ISO date to start with
-    :param end_date: String of the ISO date to end with
-    :return: DataFrame of the returned prices
-    """
-
-    try:
-        engine = create_engine('postgresql://' + user + ':' + password + '@' + host + ':' + port + '/' + database)
-        tsid, = args
-        if verbose:
-            print('Extracting the "%s" for "%s"' % (cat, tsid))
-        if tsid.split('.')[-1] not in query_type:
-            df = pd.read_sql(sql=available_fundamentals['equity'][cat](tsid, beg_date, end_date, data_vendor_id),
-                             con=engine)
-        else:
-            return pd.DataFrame()
-        if len(df) == 0:
-            print('!!! --> No data for "%s" available, or try adjusting the criteria for the query.' % tsid)
-        if cat == 'earnings_trend':
-            df['extraction_date'] = pd.to_datetime(df['extraction_date'], utc=True)
-            df['extraction_date'] = df['extraction_date'].apply(lambda x: x.date())
-            # The next two lines change the index of the df to be the date.
-            df.set_index(['extraction_date'], inplace=True)
-            df.index.name = 'extraction_date'
-
-            df.sort_values(by='extraction_date', inplace=True)
-            return df
-        else:
-            df['date'] = pd.to_datetime(df['date'], utc=True)
-            df['date'] = df['date'].apply(lambda x: x.date())
-            # The next two lines change the index of the df to be the date.
-            df.set_index(['date'], inplace=True)
-            df.index.name = 'date'
-
-            df.sort_values(by='date', inplace=True)
-            return df
-
-    except Exception as e:
-        print(e)
-        raise SystemError('Error: Unknown issue occurred in pull_fundamentals')
 
 
 def query_security_fundamentals(tsid_list, cat_list, beg_date='1990-01-01',
@@ -189,35 +82,55 @@ def query_security_fundamentals(tsid_list, cat_list, beg_date='1990-01-01',
     :param verbose: Boolean of whether print debug info or not; default false
     :return: Status message and DataFrame of the appended tsid prices
     """
-    database = cfg['postgres']['secmaster_db']
-    user = cfg['postgres']['secmaster_user']
-    password = cfg['postgres']['secmaster_password']
-    host = cfg['postgres']['secmaster_host']
-    port = cfg['postgres']['secmaster_port']
-    query_type = cfg['non_ticker_type']
-
     if type(tsid_list) is not list:
         tsid_list = [tsid_list]
     if type(cat_list) is not list:
         cat_list = [cat_list]
     start_time = time.time()
-    funda_dict = dict()
+    output_dict = dict()
 
-    for cat in cat_list:
-        if cat in available_fundamentals['equity']:
-            fundamentals_data = pd.DataFrame()
-            for ticker in tsid_list:
-                new_df = pull_fundamentals(database, user, password, host, port,
-                                           query_type, data_vendor_id, beg_date,
-                                           end_date, cat, verbose, ticker)
+    for tsid in tsid_list:
+        ticker_dict = dict()
+        # 1. check if ticker exists
+        check = check_asset_query(tsid, data_vendor_id)
+        ticker_type = execute_query(check, user, password, host, port, database)
+        if ticker_type['exists'][0] and tsid.split('.')[-1] not in excl_sec_type:
+            # 2. if exists, check ticker class/type
+            asset_query = get_asset_type(tsid, data_vendor_id)
+            asset_type = execute_query(asset_query, user, password, host, port, database)
+            # 3. run fundamentals query for each category
+            if asset_type in ['Common Stock']:
+                for category in cat_list:
+                    if category in available_fundamentals['equity']['stock']:
+                        cat = available_fundamentals['equity']['stock'][category]
+                        ticker_dict[category] = pull_fundamentals(cat, data_vendor_id, beg_date, end_date,
+                                                                  database, user, password, host, port, verbose,
+                                                                  tsid)
+                    else:
+                        print("Skipping: ", category, " -> category does not exist or not implemented!")
+                        continue
 
-                fundamentals_data = pd.concat([fundamentals_data, new_df], ignore_index=False, sort=True)
-            funda_dict[cat] = fundamentals_data
+            elif asset_type in ['ETF', 'ETP']:
+                for category in cat_list:
+                    if category in available_fundamentals['equity']['etp']:
+
+                        ticker_dict[category] = pull_fundamentals(database, user, password, host, port,
+                                                                  data_vendor_id, beg_date,
+                                                                  end_date, category, verbose, tsid)
+                    else:
+                        print("Skipping: ", category, " -> category does not exist or not implemented!")
+                        continue
+
+            else:
+                print(NotImplemented)
+                continue
+            output_dict[tsid] = ticker_dict
         else:
-            print("Skipping: ", cat, " -> category does not exist or not implemented!") % cat
+            print("Skipping: ", tsid, " -> ticker does not exist for vendor id or in excluded 'sec_type' list!")
             continue
-        if verbose:
-            unique_codes = pd.unique((fundamentals_data['tsid']).values)
-            print('"%s" has # %i unique tsid codes' % (cat, len(unique_codes)))
+
+        # if verbose:
+        #     unique_codes = pd.unique((fundamentals_data['tsid']).values)
+        #     print('"%s" has # %i unique tsid codes' % (cat, len(unique_codes)))
     print('Query took %0.2f seconds' % (time.time() - start_time))
-    return funda_dict
+    return output_dict
