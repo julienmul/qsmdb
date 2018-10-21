@@ -62,7 +62,7 @@ def pull_daily_prices(tsid, data_vendor_id, beg_date, end_date, adjust,
 
 
 def pull_fundamentals(cat, data_vendor_id, beg_date, end_date, database, user, password, host, port, verbose,
-                      *args):
+                      tsid, special_cat=None):
     """ Query the daily prices from the database for the tsid provided between
     the start and end dates. Return a DataFrame with the prices.
 
@@ -79,7 +79,7 @@ def pull_fundamentals(cat, data_vendor_id, beg_date, end_date, database, user, p
     from numpy import nan
     from pandas import to_datetime
     try:
-        tsid, = args
+
         if verbose:
             print('Extracting the "%s" for "%s"' % (cat, tsid))
 
@@ -89,7 +89,8 @@ def pull_fundamentals(cat, data_vendor_id, beg_date, end_date, database, user, p
 
         if len(df) == 0:
             print('!!! --> No data for "%s" available, or try adjusting the criteria for the query.' % tsid)
-        if cat == 'earnings_trend':
+            return df
+        if special_cat == 'earnings_trend':
             df['extraction_date'] = to_datetime(df['extraction_date'], utc=True)
             df['extraction_date'] = df['extraction_date'].apply(lambda x: x.date())
             # The next two lines change the index of the df to be the date.

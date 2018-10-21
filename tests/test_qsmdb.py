@@ -11,8 +11,8 @@ end_date = '2018-09-04'
 data_vendor_id = 20
 query_type = cfg['non_ticker_type']
 tsid = 'DBK.DE'
-tsid_list = ['CBK.DE', 'DBK.DE', 'GDAXI.INDEX', 'AAPL.Q']
-test_category = 'key_metrics_technicals'
+tsid_list = ['CBK.DE', 'GDAXI.INDEX', 'AAPL.Q', 'XLF.NARCA']
+test_category = ['earnings_trend']  # 'key_metrics_technicals', 'key_metrics_valuation',
 verbose = True
 
 
@@ -45,3 +45,17 @@ def test_pull_fundamentals():
                            tsid)
     print(df.head())
     assert len(df) > 0
+
+
+def test_get_security_prices():
+    from qsmdb.qsmdb import get_security_prices
+    data = get_security_prices(tsid_list)
+    print(data.head())
+    assert len(data) > 0
+
+
+def test_security_fundamentals():
+    from qsmdb.qsmdb import get_security_fundamentals
+    data = get_security_fundamentals(tsid_list, test_category)
+    print(data)
+    assert len(data) > 0
