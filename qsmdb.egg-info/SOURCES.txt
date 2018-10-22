@@ -1,8 +1,10 @@
+setup.py
 qsmdb/__init__.py
 qsmdb/config.py
+qsmdb/db_io.py
 qsmdb/mods.py
 qsmdb/qsmdb.py
-qsmdb/test.py
+qsmdb/queries.py
 qsmdb.egg-info/PKG-INFO
 qsmdb.egg-info/SOURCES.txt
 qsmdb.egg-info/dependency_links.txt
