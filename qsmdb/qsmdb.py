@@ -18,6 +18,16 @@ def get_available_fundamentals(sec_class='equity', sec_type='stock'):
     return [cat for cat in available_fundamentals[sec_class][sec_type]]
 
 
+# TODO: implement sector search
+def get_sector_list():
+    pass
+
+
+# TODO: implement industry search
+def get_industry_list():
+    pass
+
+
 def get_security_prices(tsid_list, beg_date='1990-01-01',
                         end_date=dt.datetime.today(), frequency='daily',
                         data_vendor_id=20, adjust=True, verbose=False):
